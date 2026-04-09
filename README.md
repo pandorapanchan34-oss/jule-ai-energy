@@ -18,6 +18,23 @@ The result: AI systems operating under Jule incentives naturally converge toward
 
 ---
 
+## Quick Start
+
+\`\`\`bash
+npm install jule-ai-energy
+\`\`\`
+
+\`\`\`typescript
+import { TheShredder, MockAspidosAIAdapter } from 'jule-ai-energy';
+
+const shredder = new TheShredder(new MockAspidosAIAdapter());
+const result = await shredder.executeAudit(
+  'your transmission here',
+  [], 0.5, l2Evaluations
+);
+console.log(result.jule, result.fingerprint);
+\`\`\`
+
 ## The Formula
 
 ```
