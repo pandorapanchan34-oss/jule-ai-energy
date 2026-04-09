@@ -1,26 +1,29 @@
 // ─────────────────────────────────────────────
-// Energy Meter
+// Energy Meter (Stable Protocol Version)
 //
-// Energy = ΔT × R
-//        = ΔT × (ΔT / T_baseline)
-//        = ΔT² / T_baseline
+// Energy = ΔT × √R
+// ΔT = T_baseline - T_actual
+// R  = ΔT / T_baseline
 //
-// ΔT = T_baseline - T_actual  (token reduction)
-// R  = ΔT / T_baseline        (reduction rate 0-1)
+// Dual Baseline:
+//   T_baseline = max(globalBaseline, localBaseline)
 //
-// Quadratic reward: the more you reduce,
-// the higher the reduction rate → exponential gain.
+// Fixes:
+// - Prevent baseline collapse
+// - Prevent gaming (local best = minimum)
+// - Normalize distribution
 // ─────────────────────────────────────────────
+
 import type { AuditLogEntry } from '../types/index.js';
 
 export interface EnergyComponents {
-  T_baseline:      number;  // effective baseline (max of global/local)
-  T_baseline_global: number; // system-wide rolling average
-  T_baseline_local:  number; // user's personal best baseline
-  T_actual:        number;  // actual tokens in this submission
-  delta_T:         number;  // T_baseline - T_actual
-  R:               number;  // delta_T / T_baseline (reduction rate)
-  energy:          number;  // delta_T × sqrt(R)
+  T_baseline:        number;
+  T_baseline_global: number;
+  T_baseline_local:  number;
+  T_actual:          number;
+  delta_T:           number;
+  R:                 number;
+  energy:            number;
 }
 
 export interface EnergyReport {
@@ -39,130 +42,174 @@ export interface EnergyReport {
 }
 
 export class EnergyMeter {
-  private entries:       AuditLogEntry[] = [];
-  private baseline:      number;           // global baseline (EMA)
-  private localBest:     Map<string, number> = new Map(); // per-user best
+  private entries: AuditLogEntry[] = [];
+
+  // Global baseline (EMA)
+  private globalBaseline: number;
+
+  // Local best (minimum tokens per user)
+  private localBest: Map<string, number> = new Map();
 
   constructor(initialBaseline: number = 500) {
-    this.baseline = initialBaseline;
+    this.globalBaseline = initialBaseline;
   }
 
   // ── Core Formula ───────────────────────────
-  // baseline = Math.max(global, local)
-  // → Stricter baseline: personal best or system average
-  // energy = ΔT × √R (stabilized: smoother reward curve)
   static calculate(
-    T_actual:        number,
-    globalBaseline:  number,
-    localBaseline:   number = 0
+    T_actual: number,
+    globalBaseline: number,
+    localBaseline: number = Infinity
   ): EnergyComponents {
+
     const T_baseline = Math.max(globalBaseline, localBaseline);
-    const delta_T    = Math.max(0, T_baseline - T_actual);
-    const R          = T_baseline > 0 ? delta_T / T_baseline : 0;
-    const energy     = delta_T * Math.sqrt(R); // stabilized
+
+    const delta_T = Math.max(0, T_baseline - T_actual);
+    const R       = T_baseline > 0 ? delta_T / T_baseline : 0;
+
+    // Stabilized reward
+    const energy  = delta_T * Math.sqrt(R);
+
     return {
       T_baseline,
       T_baseline_global: globalBaseline,
-      T_baseline_local:  localBaseline,
-      T_actual, delta_T, R, energy
+      T_baseline_local:  localBaseline === Infinity ? 0 : localBaseline,
+      T_actual,
+      delta_T,
+      R,
+      energy
     };
   }
 
-  // ── Step 1: Baseline Generation ────────────
-  // Dynamic: rolling EMA of recent submissions
-  updateBaseline(T_actual: number): void {
-    const ALPHA  = 0.05;
-    this.baseline = (1 - ALPHA) * this.baseline + ALPHA * T_actual;
+  // ── Global Baseline (EMA) ──────────────────
+  updateGlobalBaseline(T_actual: number): void {
+    const ALPHA = 0.05;
+    this.globalBaseline =
+      (1 - ALPHA) * this.globalBaseline + ALPHA * T_actual;
   }
 
-  getBaseline(): number { return this.baseline; }
-
-  // ── Step 2: Actual Measurement ─────────────
-  measure(T_actual: number, userId?: string): EnergyComponents {
-    const localBaseline = userId
-      ? (this.localBest.get(userId) ?? 0)
-      : 0;
-    return EnergyMeter.calculate(T_actual, this.baseline, localBaseline);
+  getGlobalBaseline(): number {
+    return this.globalBaseline;
   }
 
-  // Update local best: if user was more efficient before, keep that bar
+  // ── Local Best (ANTI-GAMING FIX) ───────────
   updateLocalBest(userId: string, T_actual: number): void {
-    const current = this.localBest.get(userId) ?? 0;
-    // Local best = highest T_actual seen (user's own baseline)
-    // We track their average, not their worst
-    const ALPHA = 0.1;
-    const updated = current === 0
-      ? T_actual
-      : (1 - ALPHA) * current + ALPHA * T_actual;
-    this.localBest.set(userId, updated);
+    const current = this.localBest.get(userId);
+
+    if (current === undefined) {
+      this.localBest.set(userId, T_actual);
+    } else {
+      // Keep minimum (best efficiency)
+      this.localBest.set(userId, Math.min(current, T_actual));
+    }
   }
 
-  // ── Step 3: Energy Calculation ─────────────
-  // Mutates baseline + local best after measurement
+  getLocalBaseline(userId?: string): number {
+    if (!userId) return Infinity;
+    return this.localBest.get(userId) ?? Infinity;
+  }
+
+  // ── Measurement ────────────────────────────
+  measure(T_actual: number, userId?: string): EnergyComponents {
+    const localBaseline = this.getLocalBaseline(userId);
+
+    return EnergyMeter.calculate(
+      T_actual,
+      this.globalBaseline,
+      localBaseline
+    );
+  }
+
+  // ── Full Calculation ───────────────────────
   calcEnergy(T_actual: number, userId?: string): EnergyComponents {
     const components = this.measure(T_actual, userId);
-    this.updateBaseline(T_actual);
-    if (userId) this.updateLocalBest(userId, T_actual);
+
+    // Update baselines AFTER measurement
+    this.updateGlobalBaseline(T_actual);
+
+    if (userId) {
+      this.updateLocalBest(userId, T_actual);
+    }
+
     return components;
   }
 
-  // ── Step 4: Distribution Calculation ────────
+  // ── Distribution (FIXED NORMALIZATION) ─────
   static distributeJule(
-    energy:            number,
+    energy: number,
+    baseline: number,
     distribution_rate: number = 0.10,
-    J_MAX:             number = 100
+    J_MAX: number = 100
   ): number {
-    const normalized = Math.min(energy / (J_MAX * J_MAX), 1);
+
+    // Normalize by baseline (scale-safe)
+    const normalized = baseline > 0
+      ? Math.min(energy / baseline, 1)
+      : 0;
+
     return normalized * J_MAX * distribution_rate;
   }
 
-  // ── Full Pipeline ───────────────────────────
-  // baseline → actual → energy → distribution
-  run(T_actual: number, distribution_rate: number = 0.10, userId?: string): {
-    components:   EnergyComponents;
+  // ── Pipeline ───────────────────────────────
+  run(
+    T_actual: number,
+    distribution_rate: number = 0.10,
+    userId?: string
+  ): {
+    components: EnergyComponents;
     distribution: number;
   } {
-    const components   = this.calcEnergy(T_actual, userId);
+
+    const components = this.calcEnergy(T_actual, userId);
+
     const distribution = EnergyMeter.distributeJule(
-      components.energy, distribution_rate
+      components.energy,
+      components.T_baseline,
+      distribution_rate
     );
+
     return { components, distribution };
   }
 
-  // ── Record & Report ─────────────────────────
+  // ── Record ────────────────────────────────
   record(entry: AuditLogEntry): void {
     this.entries.push(entry);
   }
 
+  // ── Report ────────────────────────────────
   generateReport(
-    period_start:      number,
-    period_end:        number,
+    period_start: number,
+    period_end: number,
     distribution_rate: number = 0.10
   ): EnergyReport {
+
     const period = this.entries.filter(
       e => e.timestamp >= period_start && e.timestamp <= period_end
     );
+
     const total_energy = period.reduce(
       (a, e) => a + e.energy_saved, 0
     );
+
     const top = [...period]
       .sort((a, b) => b.energy_saved - a.energy_saved)
       .slice(0, 10)
       .map(e => ({
         transmission_id: e.transmission_id,
-        energy:          e.energy_saved,
-        R:               0,
+        energy: e.energy_saved,
+        R: e.R ?? 0, // ← FIX
       }));
 
     return {
-      period_start, period_end,
-      total_submissions:   period.length,
+      period_start,
+      period_end,
+      total_submissions: period.length,
       total_energy,
-      mean_energy:         period.length > 0
-                           ? total_energy / period.length : 0,
-      baseline_used:       this.baseline,
+      mean_energy: period.length > 0
+        ? total_energy / period.length
+        : 0,
+      baseline_used: this.globalBaseline,
       distribution_credit: total_energy * distribution_rate,
-      top_contributors:    top,
+      top_contributors: top,
     };
   }
 }
