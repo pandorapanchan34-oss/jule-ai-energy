@@ -41,4 +41,17 @@ describe('TheShredder', () => {
     );
     expect(result.energy_saved).toBeGreaterThanOrEqual(0);
   });
+it('should apply decay on repeated genre', async () => {
+    const content = 'galaxy rotation curve analysis';
+    // 1回目
+    const r1 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    // 2回目（同ジャンル・同指紋）
+    const r2 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    // 減衰してるはず
+    expect(r2.jule).toBeLessThan(r1.jule);
+  });
 });
