@@ -55,10 +55,13 @@ export function detectGenre(content: string): JuleGenre {
 // Discretize fingerprint into a bucket key for repetition tracking
 // Bucket size: 0.1 per axis → 10×10 grid per genre
 export function getFingerprintBucket(fp: JuleAuditFingerprint): string {
-  const v  = Math.floor(fp.v_score / 10);
-  const dh = Math.floor(fp.delta_h_prime * 10);
-  const s  = Math.floor(fp.sigma_singularity * 10);
-  return `${v}_${dh}_${s}`;
+  const v     = Math.floor(fp.v_score / 10);
+  const dh    = Math.floor(fp.delta_h_prime * 10);
+  const s     = Math.floor(fp.sigma_singularity * 10);
+  const k     = Math.floor(fp.k_reality * 10);
+  const phi   = Math.floor(fp.phi_inertia * 10);
+  const genre = fp.gamma_genre;
+  return `${v}_${dh}_${s}_${k}_${phi}_${genre}`;
 }
 
 // ── Repetition Decay ───────────────────────
