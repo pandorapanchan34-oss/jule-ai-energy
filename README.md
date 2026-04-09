@@ -137,6 +137,26 @@ The `posting_cost` is framed as an **energy usage fee**: every triggered evaluat
 
 ---
 
+## Future Incentives & Network Effects
+
+Jule's current rewards are modest by design — but high-quality, high-density outputs tend to generate compounding value beyond the immediate transaction.
+
+- A single high-ΔH' output can improve other users' prompting strategies and contribute to model-wide efficiency gains
+- As Reputation (R) accumulates, subsequent rewards grow non-linearly — early contributors compound their advantage
+- Looking ahead, Jule's **Tokens per Watt** metric aligns with the direction the AI industry is moving in 2026 (NVIDIA's efficiency-first roadmap, AI Factory economics, token economy design)
+
+Longer-term possibilities (speculative, not guaranteed):
+
+- Community-wide efficiency gains distributed through a shared reward pool
+- DAO governance allowing participants to vote on the energy redistribution rate
+- High-efficiency outputs scored retroactively as "influence multipliers"
+
+Jule is still in the design verification stage. At current scale, 100 Jule ≈ ¥0.5–1. That's intentionally small — the point is to establish the *mechanism*, not the magnitude.
+
+The bet: if AI energy efficiency becomes an economic priority (and the signals suggest it will), having a working incentive layer already in place matters more than the current token price.
+
+> *A small experiment toward making AI waste economically costly.*
+
 ## The Aspidos Connection
 
 Jule is built on [Aspidos](https://github.com/pandorapanchan34-oss/aspidos), a defensive AI security library.
