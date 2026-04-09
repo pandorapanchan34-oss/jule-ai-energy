@@ -160,18 +160,19 @@ Where Aspidos identifies hallucination-driven token inflation, Jule's `ΔH'` cat
 ```
 
 ---
-
-## Status
-
-Design verification stage. Full whitepaper available in this repository.
-
 - [x] Core formula and parameter design
 - [x] THE SHREDDER dual-gate architecture
+- [x] 6-axis fingerprint (V/ΔH'/k/Σ/Φ/γ)    ← 追加
+- [x] Genre decay loop (anti-collusion)        ← 追加
+- [x] Energy meter (ΔT × √R, dual baseline)   ← 追加
 - [x] Aspidos integration specification
 - [x] English + Japanese whitepaper
+- [x] Interactive demo (demo/JuleDemo.tsx)     ← 追加
+- [ ] npm publish                              ← 追加
 - [ ] Backend implementation (Vercel + LibSQL)
 - [ ] ΔH' energy estimation module
 - [ ] PoV DAO governance layer
+
 
 ---
 
