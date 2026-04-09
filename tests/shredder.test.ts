@@ -54,4 +54,27 @@ it('should apply decay on repeated genre', async () => {
     // 減衰してるはず
     expect(r2.jule).toBeLessThan(r1.jule);
   });
-});
+  it('should apply decay on repeated genre', async () => {
+    const content = 'galaxy rotation curve analysis';
+    const r1 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    const r2 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    expect(r2.jule).toBeLessThan(r1.jule);
+  });
+});it('energy_saved should be recorded', async () => {
+    ...
+  });
+
+  it('should apply decay on repeated genre', async () => {
+    const content = 'galaxy rotation curve analysis';
+    const r1 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    const r2 = await shredder.executeAudit(
+      content, [], 0.5, mockL2(80, 200)
+    );
+    expect(r2.jule).toBeLessThan(r1.jule);
+  });
