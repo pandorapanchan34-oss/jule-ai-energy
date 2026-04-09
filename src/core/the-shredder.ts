@@ -217,11 +217,13 @@ export class TheShredder {
 
     // ── Self-Consistency Check ───────────────
     const consistent = this.checkSelfConsistency(fingerprint);
-    if (!consistent) {
-      // Recalibrate: downgrade jule proportionally to drift
-      const recalibrated = jule * 0.5;
-      console.warn('[SelfConsistency] Jule recalibrated:', jule, '->', recalibrated);
-    }
+const finalJule  = consistent ? jule : jule * 0.5;
+if (!consistent) {
+  console.warn(
+    '[SelfConsistency] Jule recalibrated:',
+    jule, '->', finalJule
+  );
+}
 
     // Record into history for future recalibration
     this.recordHistory(fingerprint);
