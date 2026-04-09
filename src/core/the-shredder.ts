@@ -10,7 +10,7 @@ import type {
   IAspidosAIAdapter, JuleConstants,
 } from '../types/index.js';
 import { calculateSigma }       from '../fingerprint/sigma.js';
-import { calculatePhi, exclusionMultiplier, hashContent }
+import { calculatePhi, hashContent }
                                 from '../fingerprint/phi.js';
 import { calculateDeltaHPrime, calculateEnergySaved }
                                 from '../fingerprint/delta-h-prime.js';
@@ -23,7 +23,7 @@ import type { GenreRepetitionMap, JuleGenre } from '../types/index.js';
 const DEFAULT_CONSTANTS: JuleConstants = {
   POSTING_COST:     10,
   J_MAX:            100,
-  THRESHOLD_G:      parseFloat(process.env.THRESHOLD_G  ?? '0.833'),
+  THRESHOLD_G:      parseFloat(process.env.THRESHOLD_G    ?? '0.833'),
   PHI_BURN_LIMIT:   parseFloat(process.env.PHI_BURN_LIMIT ?? '0.95'),
   PHI_WARN_LIMIT:   parseFloat(process.env.PHI_WARN_LIMIT ?? '0.70'),
   LAMBDA_INERTIA:   parseFloat(process.env.LAMBDA_INERTIA ?? '3.0'),
@@ -65,8 +65,8 @@ export class TheShredder {
    * Prevents: model drift, evaluation inflation, silent degradation.
    */
   private checkSelfConsistency(fp: JuleAuditFingerprint): boolean {
-    const expected = this.calculateExpectedV();
-    const drift    = Math.abs(fp.v_score - expected);
+    const expected       = this.calculateExpectedV();
+    const drift          = Math.abs(fp.v_score - expected);
     const DRIFT_TOLERANCE = 15;
     if (drift > DRIFT_TOLERANCE && this.auditHistory.length >= 10) {
       console.warn(
@@ -104,10 +104,10 @@ export class TheShredder {
   }
 
   async executeAudit(
-    transmission:    string,
-    history:         JuleAuditFingerprint[],
-    userReputation:  number,
-    l2Evaluations:   L2Evaluation[]
+    transmission:   string,
+    history:        JuleAuditFingerprint[],
+    userReputation: number,
+    l2Evaluations:  L2Evaluation[]
   ): Promise<AuditResult> {
     const transmission_id = this.generateId();
     const content_hash    = hashContent(transmission);
@@ -117,15 +117,14 @@ export class TheShredder {
     let burn_reason: string | null = null;
 
     if (this.aspidos) {
-      const l1 = await this.aspidos.evaluateCategory(transmission);
+      const l1     = await this.aspidos.evaluateCategory(transmission);
       const mapped = BURN_REASON_MAP[l1.category] ?? { reason: null, k: 1.0 };
-      k_reality   = mapped.k;
-      burn_reason = mapped.reason;
+      k_reality    = mapped.k;
+      burn_reason  = mapped.reason;
 
       if (k_reality === 0.0) {
         return this.burnResult(
-          transmission_id, content_hash,
-          '反社会的', history
+          transmission_id, content_hash, '反社会的'
         );
       }
     }
@@ -136,7 +135,7 @@ export class TheShredder {
     if (phi > this.constants.PHI_BURN_LIMIT) {
       return this.burnResult(
         transmission_id, content_hash,
-        'Duplicate Fingerprint Detected', history
+        'Duplicate Fingerprint Detected'
       );
     }
 
@@ -155,9 +154,14 @@ export class TheShredder {
     // ── γ: Genre Detection + Decay Loop ─────
     const genre  = detectGenre(transmission);
     const bucket = getFingerprintBucket({
-      v_score: v, delta_h_prime, k_reality,
-      sigma_singularity: sigma, phi_inertia: phi,
-      gamma_genre: genre, delta_h_effective: 0, repetition_count: 0,
+      v_score:           v,
+      delta_h_prime,
+      k_reality,
+      sigma_singularity: sigma,
+      phi_inertia:       phi,
+      gamma_genre:       genre,
+      delta_h_effective: 0,
+      repetition_count:  0,
     });
     const decay = calculateDecay(
       'user', genre, bucket, delta_h_prime, this.repMap
@@ -175,24 +179,24 @@ export class TheShredder {
     if (decay.is_echo_chamber) {
       return this.burnResult(
         transmission_id, content_hash,
-        'Echo Chamber: 11-loop decay complete', history
+        'Echo Chamber: 11-loop decay complete'
       );
     }
 
     // Apply cross-genre bonus
-    const genre_bonus    = crossGenreBonus(genre);
-    const delta_h_final  = decay.delta_h_effective * genre_bonus;
+    const genre_bonus   = crossGenreBonus(genre);
+    const delta_h_final = decay.delta_h_effective * genre_bonus;
 
     // Update repetition map
     this.repMap = incrementRepetition('user', genre, bucket, this.repMap);
 
     // ── Jule Calculation ─────────────────────
     const jule = calculateJule({
-  v,
-  delta_h:    delta_h_final,
-  reputation: userReputation,
-  k:          k_reality,
-});
+      v,
+      delta_h:    delta_h_final,
+      reputation: userReputation,
+      k:          k_reality,
+    });
 
     // ── Determine burn_reason from L2 ────────
     if (!burn_reason && l2Evaluations.length > 0) {
@@ -217,23 +221,24 @@ export class TheShredder {
 
     // ── Self-Consistency Check ───────────────
     const consistent = this.checkSelfConsistency(fingerprint);
-const finalJule  = consistent ? jule : jule * 0.5;
-if (!consistent) {
-  console.warn(
-    '[SelfConsistency] Jule recalibrated:',
-    jule, '->', finalJule
-  );
-}
+    const finalJule  = consistent ? jule : jule * 0.5;
+    if (!consistent) {
+      console.warn(
+        '[SelfConsistency] Jule recalibrated:',
+        jule, '->', finalJule
+      );
+    }
 
     // Record into history for future recalibration
     this.recordHistory(fingerprint);
 
     // ── L4: Sign & Persist ───────────────────
+    const net   = calculateNet(finalJule);
     const entry: AuditLogEntry = {
       transmission_id,
       raw_content_hash: content_hash,
       fingerprint,
-      jule_issued:     finaljule,
+      jule_issued:      finalJule,
       burn_reason,
       energy_saved,
       timestamp:        Date.now(),
@@ -247,7 +252,7 @@ if (!consistent) {
     return {
       transmission_id,
       status:      net >= 0 ? 'ISSUED' : 'BURN',
-      jule,
+      jule:        finalJule,
       net,
       fingerprint,
       burn_reason,
@@ -261,26 +266,25 @@ if (!consistent) {
     transmission_id: string,
     content_hash:    string,
     reason:          string,
-    _history:        JuleAuditFingerprint[]
   ): AuditResult {
     const fingerprint: JuleAuditFingerprint = {
-  v_score:           0,
-  delta_h_prime:     0,
-  k_reality:         0,
-  sigma_singularity: 0,
-  phi_inertia:       1,
-  gamma_genre:       'OTHER',   // ★追加
-  delta_h_effective: 0,         // ★追加
-  repetition_count:  0,         // ★追加
-};
+      v_score:           0,
+      delta_h_prime:     0,
+      k_reality:         0,
+      sigma_singularity: 0,
+      phi_inertia:       1,
+      gamma_genre:       'OTHER',
+      delta_h_effective: 0,
+      repetition_count:  0,
+    };
     const entry: AuditLogEntry = {
       transmission_id,
       raw_content_hash: content_hash,
       fingerprint,
-      jule_issued:  0,
-      burn_reason:  reason,
-      energy_saved: 0,
-      timestamp:    Date.now(),
+      jule_issued:      0,
+      burn_reason:      reason,
+      energy_saved:     0,
+      timestamp:        Date.now(),
     };
     if (this.aspidos) {
       const signed = this.aspidos.signEntry(entry);
@@ -290,7 +294,7 @@ if (!consistent) {
       transmission_id,
       status:      'BURN',
       jule:        0,
-      net:         calculateNet(finalJule),
+      net:         -this.constants.POSTING_COST,
       fingerprint,
       burn_reason: reason,
       energy_saved: 0,
