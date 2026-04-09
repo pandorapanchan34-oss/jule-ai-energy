@@ -18,6 +18,12 @@ The result: AI systems operating under Jule incentives naturally converge toward
 
 ---
 
+## 🎮 Interactive Demo
+
+**[▶ Launch THE SHREDDER](https://pandorapanchan34-oss.github.io/jule-ai-energy/)**
+
+6-axis fingerprint · Genre decay loop · Real-time audit log
+
 ---
 
 ## ⚡ Quick Guide: The Jule Loop
@@ -46,11 +52,11 @@ J = tanh(V/50) × ΔH' × R × k
 
 ## Quick Start
 
-\`\`\`bash
+```bash
 npm install jule-ai-energy
-\`\`\`
+```
 
-\`\`\`typescript
+```typescript
 import { TheShredder, MockAspidosAIAdapter } from 'jule-ai-energy';
 
 const shredder = new TheShredder(new MockAspidosAIAdapter());
@@ -59,7 +65,7 @@ const result = await shredder.executeAudit(
   [], 0.5, l2Evaluations
 );
 console.log(result.jule, result.fingerprint);
-\`\`\`
+```
 
 ### The ΔH' Extension
 
@@ -160,19 +166,23 @@ Where Aspidos identifies hallucination-driven token inflation, Jule's `ΔH'` cat
 ```
 
 ---
+
+## Status
+
+Design verification stage. Full whitepaper available in this repository.
+
 - [x] Core formula and parameter design
 - [x] THE SHREDDER dual-gate architecture
-- [x] 6-axis fingerprint (V/ΔH'/k/Σ/Φ/γ)    ← 追加
-- [x] Genre decay loop (anti-collusion)        ← 追加
-- [x] Energy meter (ΔT × √R, dual baseline)   ← 追加
+- [x] 6-axis fingerprint (V / ΔH' / k / Σ / Φ / γ)
+- [x] Genre decay loop (anti-collusion)
+- [x] Energy meter (ΔT × √R, dual baseline)
 - [x] Aspidos integration specification
 - [x] English + Japanese whitepaper
-- [x] Interactive demo (demo/JuleDemo.tsx)     ← 追加
-- [ ] npm publish                              ← 追加
+- [x] Interactive demo (GitHub Pages)
+- [x] npm publish (jule-ai-energy@1.0.3)
 - [ ] Backend implementation (Vercel + LibSQL)
 - [ ] ΔH' energy estimation module
 - [ ] PoV DAO governance layer
-
 
 ---
 
@@ -202,4 +212,3 @@ This project is part of a growing defensive layer for AI systems.
 </p>
 
 <hr>
-
