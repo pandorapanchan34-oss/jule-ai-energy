@@ -233,7 +233,7 @@ if (!consistent) {
       transmission_id,
       raw_content_hash: content_hash,
       fingerprint,
-      jule_issued:      jule,
+      jule_issued:     finaljule,
       burn_reason,
       energy_saved,
       timestamp:        Date.now(),
