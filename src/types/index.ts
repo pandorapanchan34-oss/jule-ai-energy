@@ -77,6 +77,9 @@ export interface AuditLogEntry {
   jule_issued:      number;
   burn_reason:      string | null;
   energy_saved:     number;
+  R?:               number;           // reduction rate ΔT/T_baseline
+  T_actual?:        number;           // actual token count
+  T_baseline?:      number;           // effective baseline used
   timestamp:        number;
   hmac_signature?:  string;           // set by PandoraTruthGate adapter
 }
