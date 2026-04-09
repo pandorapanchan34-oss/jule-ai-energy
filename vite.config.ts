@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  root: 'demo',        // ← demo/を起点に
+  root: 'demo',
   build: {
-    outDir: '../dist-demo',  // ← ルートからの相対パス
+    outDir: '../dist-demo',
+    emptyOutDir: true,        
   },
   base: '/jule-ai-energy/',
 });
