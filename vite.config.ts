@@ -3,9 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  root: '.',
+  root: 'demo',        // ← demo/を起点に
   build: {
-    outDir: 'dist-demo',
+    outDir: '../dist-demo',  // ← ルートからの相対パス
   },
   base: '/jule-ai-energy/',
 });
