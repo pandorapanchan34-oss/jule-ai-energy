@@ -44,6 +44,23 @@ J = tanh(V/50) × ΔH' × R × k
 | `R` | Reputation score. EMA of historical contribution quality (α = 0.1, initial = 0.5) |
 | `k` | Category coefficient. Normal = 1.0 → Antisocial = 0.0 |
 
+## Quick Start
+
+\`\`\`bash
+npm install jule-ai-energy
+\`\`\`
+
+\`\`\`typescript
+import { TheShredder, MockAspidosAIAdapter } from 'jule-ai-energy';
+
+const shredder = new TheShredder(new MockAspidosAIAdapter());
+const result = await shredder.executeAudit(
+  'your transmission here',
+  [], 0.5, l2Evaluations
+);
+console.log(result.jule, result.fingerprint);
+\`\`\`
+
 ### The ΔH' Extension
 
 Standard ΔH measures informational contribution. The extended form adds an energy dimension:
