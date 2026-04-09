@@ -14,5 +14,7 @@
     "typescript": "^5.0.0",
     "ts-node": "^10.9.1",
     "vitest": "^1.0.0"
+    "demo": "vite",
+"build:demo": "vite build",
   }
 }
