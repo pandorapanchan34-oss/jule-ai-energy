@@ -1,30 +1,32 @@
-name: Deploy Demo
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build
-        run: npm run build:demo
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+{
+  "name": "jule-ai-energy",
+  "version": "2.0.0",
+  "description": "AI出力に経済的インセンティブを与える情報経済レイヤー。",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "demo": "vite --open",
+    "build:demo": "vite build",
+    "preview:demo": "vite preview"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "vitest": "^1.0.0",
+    "vite": "^5.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0"
+  },
+  "author": "pandorapanchan34-oss",
+  "license": "MIT"
+}
