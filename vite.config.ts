@@ -1,30 +1,15 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  // index.htmlがあるフォルダを指定
+  // ビルドの起点を demo フォルダに設定
   root: 'demo',
-  
-  // 公開設定
-  base: './',
-
+  plugins: [react()],
+  base: '/jule-ai-energy/',
   build: {
-    // 出力先を外側の dist フォルダに設定
+    // demo/dist ではなく、プロジェクトルートの dist に出力させる
     outDir: '../dist',
     emptyOutDir: true,
-    sourcemap: true,
     minify: 'terser',
   },
-
-  resolve: {
-    alias: {
-      // ソースコード(src)へのパスを通す
-      '@': resolve(__dirname, './src'),
-    },
-  },
-
-  server: {
-    port: 3000,
-    host: true,
-  }
-});
+})
