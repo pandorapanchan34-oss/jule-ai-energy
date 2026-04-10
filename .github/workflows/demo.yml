@@ -20,11 +20,12 @@ jobs:
         run: npm install
 
       - name: Build
-        run: npm run build:demo
+        # ルートにある vite.config.ts を使ってビルド
+        run: npx vite build
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./demo/dist  # demoの中のdistを見に行かせる
-
+          # 上記configの設定により、ルート直下の dist に成果物が出ます
+          publish_dir: ./dist
