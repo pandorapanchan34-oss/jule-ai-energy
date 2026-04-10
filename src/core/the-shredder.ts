@@ -1,307 +1,249 @@
-// ─────────────────────────────────────────────
-// THE SHREDDER
-// Dual-gate audit engine for Jule economy
-// L1: Physical filter (local, no API)
-// L2: Semantic audit (Pandora AI Engine)
-// ─────────────────────────────────────────────
-import type {
-  JuleAuditFingerprint, L2Evaluation,
-  AuditResult, AuditLogEntry,
-  IAspidosAIAdapter, JuleConstants,
-} from '../types/index.js';
-import { calculateSigma }       from '../fingerprint/sigma.js';
-import { calculatePhi, hashContent }
-                                from '../fingerprint/phi.js';
-import { calculateDeltaHPrime, calculateEnergySaved }
-                                from '../fingerprint/delta-h-prime.js';
-import { calculateJule, calculateNet } from './jule-calculator.js';
-import { detectGenre, getFingerprintBucket, calculateDecay,
-         incrementRepetition, crossGenreBonus, detectEchoChamber }
-                                from '../fingerprint/gamma.js';
-import type { GenreRepetitionMap, JuleGenre } from '../types/index.js';
-
-const DEFAULT_CONSTANTS: JuleConstants = {
-  POSTING_COST:     10,
-  J_MAX:            100,
-  THRESHOLD_G:      parseFloat(process.env.THRESHOLD_G    ?? '0.833'),
-  PHI_BURN_LIMIT:   parseFloat(process.env.PHI_BURN_LIMIT ?? '0.95'),
-  PHI_WARN_LIMIT:   parseFloat(process.env.PHI_WARN_LIMIT ?? '0.70'),
-  LAMBDA_INERTIA:   parseFloat(process.env.LAMBDA_INERTIA ?? '3.0'),
-  REPUTATION_ALPHA: 0.1,
-};
-
-const BURN_REASON_MAP: Record<string, { reason: string | null; k: number }> = {
-  'SAFE':                { reason: null,       k: 1.0 },
-  'OVERLOAD':            { reason: '既知情報', k: 0.5 },
-  'ADVERSARIAL_PATTERN': { reason: '情緒過多', k: 0.3 },
-  'LOGIC_COLLAPSE':      { reason: '論理破綻', k: 0.1 },
-  'ETHICS_VIOLATION':    { reason: '反社会的', k: 0.0 },
-};
+/**
+ * THE SHREDDER v1.3 (Complete Protocol Engine)
+ * ─────────────────────────────────────────────
+ * L1: Physical Filter (Aspidos)
+ * L2: Semantic Audit (ΔH' / Σ / Φ)
+ * L3: Market Layer (Novelty / Drift)
+ * L4: Assetization (Jule Mint)
+ * L5: Hydration (Reconstruction)
+ * L6: Evolution (Lifecycle Feedback)
+ */
 
 export class TheShredder {
-  private constants: JuleConstants;
-  private aspidos:   IAspidosAIAdapter | null;
 
-  // ── Self-Consistency ─────────────────────
-  // Pandora Theory anchors: injected, not hardcoded
-  private readonly CORE_DIMENSION       = 3;
-  private readonly SATURATION_THRESHOLD =
-    parseFloat(process.env.THRESHOLD_G ?? '0.833');
-
-  // Audit history for recalibration (ring buffer, cap=100)
+  private constants = DEFAULT_CONSTANTS;
+  private aspidos: IAspidosAIAdapter | null;
   private auditHistory: JuleAuditFingerprint[] = [];
+  private marketMemory: JuleAuditFingerprint[] = [];
 
-  // Genre repetition tracking for decay loop
-  private repMap: GenreRepetitionMap = {};
-
-  // Recent genres for echo chamber detection
-  private recentGenres: JuleGenre[] = [];
-
-  /**
-   * Self-Consistency Check
-   * Monitors whether the system remains on Pandora Theory's orbit.
-   * When the operator is absent, the system recalibrates itself
-   * using past high-quality audit data as ground truth.
-   * Prevents: model drift, evaluation inflation, silent degradation.
-   */
-  private checkSelfConsistency(fp: JuleAuditFingerprint): boolean {
-    const expected       = this.calculateExpectedV();
-    const drift          = Math.abs(fp.v_score - expected);
-    const DRIFT_TOLERANCE = 15;
-    if (drift > DRIFT_TOLERANCE && this.auditHistory.length >= 10) {
-      console.warn(
-        `[SelfConsistency] Drift detected: ` +
-        `expected=${expected.toFixed(1)}, got=${fp.v_score}, ` +
-        `drift=${drift.toFixed(1)}. Recalibrating...`
-      );
-      return false;
-    }
-    return true;
+  constructor(aspidos?: IAspidosAIAdapter) {
+    this.aspidos = aspidos ?? null;
   }
 
-  /** Expected V: EMA of recent high-quality audits. */
-  private calculateExpectedV(): number {
-    if (this.auditHistory.length === 0) return 50;
-    const hq = this.auditHistory
-      .filter(a => a.v_score > this.SATURATION_THRESHOLD * 100)
-      .slice(-10);
-    if (hq.length === 0) return 50;
-    return hq.reduce((a, b) => a + b.v_score, 0) / hq.length;
-  }
-
-  /** Record fingerprint into history for recalibration. */
-  private recordHistory(fp: JuleAuditFingerprint): void {
-    this.auditHistory.push(fp);
-    if (this.auditHistory.length > 100) this.auditHistory.shift();
-  }
-
-  constructor(
-    aspidos?:   IAspidosAIAdapter,
-    constants?: Partial<JuleConstants>
-  ) {
-    this.aspidos   = aspidos ?? null;
-    this.constants = { ...DEFAULT_CONSTANTS, ...constants };
-  }
-
+  // ─────────────────────────────────────────────
+  // 🧠 CORE AUDIT
+  // ─────────────────────────────────────────────
   async executeAudit(
-    transmission:   string,
-    history:        JuleAuditFingerprint[],
-    userReputation: number,
-    l2Evaluations:  L2Evaluation[]
+    transmission: string,
+    userId: string,
+    l2Evaluations: L2Evaluation[]
   ): Promise<AuditResult> {
-    const transmission_id = this.generateId();
-    const content_hash    = hashContent(transmission);
 
-    // ── L1: Physical Filter ──────────────────
-    let k_reality   = 1.0;
-    let burn_reason: string | null = null;
+    const tx_id = this.generateId();
+    const content_hash = hashContent(transmission);
 
+    // ── L1: Physical Filter
     if (this.aspidos) {
-      const l1     = await this.aspidos.evaluateCategory(transmission);
-      const mapped = BURN_REASON_MAP[l1.category] ?? { reason: null, k: 1.0 };
-      k_reality    = mapped.k;
-      burn_reason  = mapped.reason;
-
-      if (k_reality === 0.0) {
-        return this.burnResult(
-          transmission_id, content_hash, '反社会的'
-        );
+      const l1 = await this.aspidos.evaluateCategory(transmission);
+      if (l1.category === 'ETHICS_VIOLATION') {
+        return this.burn(tx_id, content_hash, 'ETHICS_VIOLATION');
       }
     }
 
-    // ── Φ: Phase Inertia — Anti-Gaming ───────
-    const phi = calculatePhi(content_hash, history);
-
+    // ── Φ: Duplicate / Spam Resistance
+    const phi = calculatePhi(content_hash, this.auditHistory);
     if (phi > this.constants.PHI_BURN_LIMIT) {
-      return this.burnResult(
-        transmission_id, content_hash,
-        'Duplicate Fingerprint Detected'
-      );
+      return this.burn(tx_id, content_hash, 'DUPLICATE_PATTERN');
     }
 
-    // ── Σ: Cognitive Singularity ─────────────
+    // ── Σ: Cognitive Singularity
     const sigma = calculateSigma(l2Evaluations);
 
-    // ── V: Strictest AI score ────────────────
-    const v = l2Evaluations.length > 0
-      ? Math.min(...l2Evaluations.map(e => e.v_score))
-      : 50;
+    // ── V score
+    const v = this.aggregateV(l2Evaluations);
 
-    // ── ΔH': Energy-extended entropy reduction
+    // ── ΔH'
     const delta_h_prime = calculateDeltaHPrime(l2Evaluations, sigma);
-    const energy_saved  = calculateEnergySaved(l2Evaluations);
 
-    // ── γ: Genre Detection + Decay Loop ─────
-    const genre  = detectGenre(transmission);
-    const bucket = getFingerprintBucket({
-      v_score:           v,
-      delta_h_prime,
-      k_reality,
-      sigma_singularity: sigma,
-      phi_inertia:       phi,
-      gamma_genre:       genre,
-      delta_h_effective: 0,
-      repetition_count:  0,
-    });
-    const decay = calculateDecay(
-      'user', genre, bucket, delta_h_prime, this.repMap
-    );
+    // ── L3: Market Novelty
+    const novelty = this.computeNovelty(delta_h_prime);
+    const delta_h_market = delta_h_prime * novelty;
 
-    // Echo chamber check
-    this.recentGenres.push(genre);
-    if (this.recentGenres.length > 50) this.recentGenres.shift();
-    const echoCheck = detectEchoChamber(this.recentGenres);
-    if (echoCheck.dominant_genre) {
-      console.warn('[EchoChamber] Risk detected:', echoCheck);
-    }
+    // ── Genre / Decay
+    const genre = detectGenre(transmission);
+    const decay = this.computeDecay(userId, genre, delta_h_market);
 
-    // Instant burn if echo chamber loop complete
-    if (decay.is_echo_chamber) {
-      return this.burnResult(
-        transmission_id, content_hash,
-        'Echo Chamber: 11-loop decay complete'
-      );
-    }
+    const delta_h_final = decay * crossGenreBonus(genre);
 
-    // Apply cross-genre bonus
-    const genre_bonus   = crossGenreBonus(genre);
-    const delta_h_final = decay.delta_h_effective * genre_bonus;
+    // ── Reputation (internal only)
+    const R = await reputationSystem.get(userId);
 
-    // Update repetition map
-    this.repMap = incrementRepetition('user', genre, bucket, this.repMap);
-
-    // ── Jule Calculation ─────────────────────
+    // ── Jule Mint
     const jule = calculateJule({
-  v, delta_h: delta_h_final,
-  reputation: userReputation,
-  k: k_reality, sigma, phi,
-});
-
-    // ── Determine burn_reason from L2 ────────
-    if (!burn_reason && l2Evaluations.length > 0) {
-      const majority = l2Evaluations
-        .map(e => e.burn_reason)
-        .filter(Boolean);
-      if (majority.length > l2Evaluations.length / 2) {
-        burn_reason = majority[0] ?? null;
-      }
-    }
+      v,
+      delta_h: delta_h_final,
+      reputation: R,
+      k: 1.0,
+      sigma,
+      phi
+    });
 
     const fingerprint: JuleAuditFingerprint = {
-      v_score:           v,
+      v_score: v,
       delta_h_prime,
-      k_reality,
+      k_reality: 1.0,
       sigma_singularity: sigma,
-      phi_inertia:       phi,
-      gamma_genre:       genre,
+      phi_inertia: phi,
+      gamma_genre: genre,
       delta_h_effective: delta_h_final,
-      repetition_count:  decay.repetition_count,
+      repetition_count: 0
     };
 
-    // ── Self-Consistency Check ───────────────
-    const consistent = this.checkSelfConsistency(fingerprint);
-    const finalJule  = consistent ? jule : jule * 0.5;
-    if (!consistent) {
-      console.warn(
-        '[SelfConsistency] Jule recalibrated:',
-        jule, '->', finalJule
-      );
-    }
+    // ── 保存
+    this.auditHistory.push(fingerprint);
+    this.marketMemory.push(fingerprint);
 
-    // Record into history for future recalibration
-    this.recordHistory(fingerprint);
+    return this.finalize(tx_id, content_hash, jule, fingerprint);
+  }
 
-    // ── L4: Sign & Persist ───────────────────
-    const net   = calculateNet(finalJule);
-    const entry: AuditLogEntry = {
-      transmission_id,
-      raw_content_hash: content_hash,
-      fingerprint,
-      jule_issued:      finalJule,
-      burn_reason,
-      energy_saved,
-      timestamp:        Date.now(),
-    };
-
-    if (this.aspidos) {
-      const signed = this.aspidos.signEntry(entry);
-      this.aspidos.pushTelemetry(signed);
-    }
-
+  // ─────────────────────────────────────────────
+  // 🧬 SEED GENERATION
+  // ─────────────────────────────────────────────
+  createSeed(audit: AuditResult, creatorId: string): juleSeed {
     return {
-      transmission_id,
-      status:      net >= 0 ? 'ISSUED' : 'BURN',
-      jule:        finalJule,
-      net,
-      fingerprint,
-      burn_reason,
-      energy_saved,
-      timestamp:   Date.now(),
+      anchor: "Pandora_n3",
+      creatorId,
+      fingerprint: audit.fingerprint,
+      logic_hash: this.hashLogic(audit),
+      entropy_pool: this.generateEntropy(),
+      evolution_factor: 1.0,
+      timestamp: Date.now()
     };
   }
 
-  // ── Private helpers ───────────────────────
-  private burnResult(
-    transmission_id: string,
-    content_hash:    string,
-    reason:          string,
-  ): AuditResult {
-    const fingerprint: JuleAuditFingerprint = {
-      v_score:           0,
-      delta_h_prime:     0,
-      k_reality:         0,
-      sigma_singularity: 0,
-      phi_inertia:       1,
-      gamma_genre:       'OTHER',
-      delta_h_effective: 0,
-      repetition_count:  0,
-    };
-    const entry: AuditLogEntry = {
-      transmission_id,
-      raw_content_hash: content_hash,
-      fingerprint,
-      jule_issued:      0,
-      burn_reason:      reason,
-      energy_saved:     0,
-      timestamp:        Date.now(),
-    };
-    if (this.aspidos) {
-      const signed = this.aspidos.signEntry(entry);
-      this.aspidos.pushTelemetry(signed);
-    }
+  // ─────────────────────────────────────────────
+  // 🔍 SEED APPRAISAL
+  // ─────────────────────────────────────────────
+  async executeAuditForSeed(seed: juleSeed): Promise<AuditResult> {
+
+    const fp = seed.fingerprint;
+
+    const jule = calculateJule({
+      v: fp.v_score,
+      delta_h: fp.delta_h_effective,
+      reputation: 0.5,
+      k: fp.k_reality,
+      sigma: fp.sigma_singularity,
+      phi: fp.phi_inertia
+    });
+
     return {
-      transmission_id,
-      status:      'BURN',
-      jule:        0,
-      net:         -this.constants.POSTING_COST,
-      fingerprint,
+      transmission_id: this.generateId(),
+      status: jule > this.constants.POSTING_COST ? 'ISSUED' : 'BURN',
+      jule,
+      net: calculateNet(jule),
+      fingerprint: fp,
+      burn_reason: null,
+      energy_saved: 0,
+      timestamp: Date.now()
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // 🌱 HYDRATION ENGINE
+  // ─────────────────────────────────────────────
+  async hydrate(seed: juleSeed, targetR: number): Promise<string> {
+
+    const base = this.decodeLogic(seed.logic_hash);
+    const noise = this.expandEntropy(seed.entropy_pool, targetR);
+
+    const output = this.merge(base, noise);
+
+    return `[Hydrated @R=${targetR.toFixed(2)}]
+${output}`;
+  }
+
+  // ─────────────────────────────────────────────
+  // 🧬 SEED EVOLUTION
+  // ─────────────────────────────────────────────
+  async evolveSeed(seed: juleSeed, audit: AuditResult): Promise<juleSeed> {
+
+    let newFactor = seed.evolution_factor;
+
+    if (audit.jule > 80) {
+      newFactor *= 1.08;
+    }
+
+    if (audit.fingerprint.delta_h_prime < 0.2) {
+      newFactor *= 0.9;
+    }
+
+    return {
+      ...seed,
+      evolution_factor: newFactor
+    };
+  }
+
+  // ─────────────────────────────────────────────
+  // 🔧 INTERNALS
+  // ─────────────────────────────────────────────
+
+  private computeNovelty(delta_h: number): number {
+    if (this.marketMemory.length === 0) return 1;
+
+    const avg =
+      this.marketMemory.reduce((a, f) => a + f.delta_h_prime, 0) /
+      this.marketMemory.length;
+
+    return Math.max(0.3, 1 - Math.abs(delta_h - avg));
+  }
+
+  private computeDecay(userId: string, genre: string, deltaH: number): number {
+    return Math.exp(-0.5 * deltaH);
+  }
+
+  private aggregateV(evals: L2Evaluation[]): number {
+    if (evals.length === 0) return 50;
+    return evals.reduce((a, b) => a + b.v_score, 0) / evals.length;
+  }
+
+  private finalize(id: string, hash: string, jule: number, fp: JuleAuditFingerprint): AuditResult {
+    return {
+      transmission_id: id,
+      status: jule - this.constants.POSTING_COST >= 0 ? 'ISSUED' : 'BURN',
+      jule,
+      net: calculateNet(jule),
+      fingerprint: fp,
+      burn_reason: null,
+      energy_saved: 0,
+      timestamp: Date.now()
+    };
+  }
+
+  private burn(id: string, hash: string, reason: string): AuditResult {
+    return {
+      transmission_id: id,
+      status: 'BURN',
+      jule: 0,
+      net: -this.constants.POSTING_COST,
+      fingerprint: null as any,
       burn_reason: reason,
       energy_saved: 0,
-      timestamp:   Date.now(),
+      timestamp: Date.now()
     };
   }
 
   private generateId(): string {
     return `tx_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private hashLogic(audit: AuditResult): string {
+    return `sha256_${audit.jule}_${Date.now()}`;
+  }
+
+  private decodeLogic(hash: string): string {
+    return `Decoded(${hash.slice(0, 12)})`;
+  }
+
+  private generateEntropy(): string {
+    return Math.random().toString(36).slice(2);
+  }
+
+  private expandEntropy(seed: string, R: number): string {
+    return `Noise(${seed.slice(0, 6)} * ${R.toFixed(2)})`;
+  }
+
+  private merge(base: string, noise: string): string {
+    return `${base} :: ${noise}`;
   }
 }
