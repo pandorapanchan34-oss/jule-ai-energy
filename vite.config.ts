@@ -1,14 +1,30 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
+// https://vitejs.dev/config/
 export default defineConfig({
-  root: 'demo', // ここを追加！index.htmlがあるディレクトリを指定します
-  
+  // 1. エントリポイント(index.html)の場所を指定
+  root: 'demo',
+
   build: {
-    outDir: '../dist', // 出力先をdemoの外（ルート）に戻すために ../ をつけます
+    // 2. 出力先をプロジェクトルートの dist に設定
+    outDir: '../dist',
+    // 出力ディレクトリを空にする設定（rootを変更しているため必要）
     emptyOutDir: true,
     sourcemap: true,
     minify: 'terser',
   },
-  // ...残りの設定
+
+  resolve: {
+    alias: {
+      // ソースコードへのエイリアス設定
+      '@': resolve(__dirname, './src'),
+    },
+  },
+
+  // サーバー設定（開発用）
+  server: {
+    port: 3000,
+    strictPort: true,
+  }
 });
