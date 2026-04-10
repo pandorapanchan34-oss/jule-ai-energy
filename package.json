@@ -1,15 +1,18 @@
 {
   "name": "jule-ai-energy",
-  "version": "1.0.4",
+  "version": "2.0.0",
+  "description": "AI出力に経済的インセンティブを与える情報経済レイヤー。セッションを「真理の種」に圧縮し、個人間取引可能な新しい資産市場を実現。",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-  "dev": "ts-node src/index.ts",
-  "build": "tsc",
-  "test": "vitest",
-  "demo": "vite --open",
-  "build:demo": "vite build",        
-  "preview:demo": "vite preview"
-}
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "demo": "vite --open",
+    "build:demo": "vite build",
+    "preview:demo": "vite preview"
+  },
   "dependencies": {
     "uuid": "^9.0.0"
   },
@@ -23,5 +26,20 @@
     "react-dom": "^18.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0"
+  },
+  "keywords": [
+    "web3",
+    "ai",
+    "energy-efficiency",
+    "tokenomics",
+    "session-compression",
+    "jule",
+    "shredder"
+  ],
+  "author": "pandorapanchan34-oss",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pandorapanchan34-oss/jule-ai-energy.git"
   }
 }
