@@ -3,12 +3,13 @@
   "version": "1.0.4",
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts",
-    "build": "tsc",
-    "test": "vitest",
-    "demo": "vite",
-    "build:demo": "vite build"
-  },
+  "dev": "ts-node src/index.ts",
+  "build": "tsc",
+  "test": "vitest",
+  "demo": "vite --open",
+  "build:demo": "vite build",        // これでOK（vite.config.tsでroot指定してる）
+  "preview:demo": "vite preview"
+}
   "dependencies": {
     "uuid": "^9.0.0"
   },
