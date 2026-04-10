@@ -29,3 +29,14 @@ export type {
   JuleConstants,
   IAspidosAIAdapter,
 } from './types/index.js';
+// ── Market Layer (新規追加分を公開) ──
+export { JuleMarket }          from './market/JuleMarket.js';
+
+// ── Types (新しく定義した型を追加) ──
+export type {
+  juleSeed,
+  Listing,
+  SeedState,
+  HydrateResult,
+  // ...既存の型
+} from './types/index.js';
