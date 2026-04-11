@@ -138,7 +138,7 @@ The `posting_cost` is framed as an **energy usage fee**: every triggered evaluat
 
 ## 💎 Intelligence Liquidity: JuleMarket
 
-Jule moves beyond simple rewards. It introduces a secondary market for **"Compressed Thought Fragments"** known as **JuleSeeds**.
+Jule move-s beyond simple rewards. It introduces a secondary market for **"Compressed Thought Fragments"** known as **JuleSeeds**.
 
 - **Compression (Seed Generation):** Encapsulate an entire high-value session into a dense, cryptographic Seed.
 - **Verification:** THE SHREDDER audits Seeds upon listing to ensure only high-V_score, high-efficiency logic enters the market.
