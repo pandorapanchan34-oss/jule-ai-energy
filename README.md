@@ -20,7 +20,7 @@ The result: AI systems operating under Jule incentives naturally converge toward
 
 ## 🎮 Interactive Demo
 
-**[▶ Launch THE SHREDDER](https://pandorapanchan34-oss.github.io/jule-ai-energy/demo/JuleDemo.tsx)**
+**[▶ Launch THE SHREDDER](https://pandorapanchan34-oss.github.io/jule-ai-energy/)**
 
 6-axis fingerprint · Genre decay loop · Real-time audit log
 
