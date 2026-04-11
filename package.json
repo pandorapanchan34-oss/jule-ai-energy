@@ -1,26 +1,25 @@
 {
   "name": "jule-ai-energy",
-  "version": "1.0.3",
+  "private": false,
+  "version": "2.0.3",
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts",
-    "build": "tsc",
-    "test": "vitest",
-    "demo": "vite",
-    "build:demo": "vite build"
+    "dev":        "vite demo",
+    "build":      "vite build",
+    "build:demo": "vite build",
+    "preview":    "vite preview",
+    "build:lib":  "tsc"
   },
   "dependencies": {
-    "uuid": "^9.0.0"
+    "react":     "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.1",
-    "vitest": "^1.0.0",
-    "vite": "^5.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0"
+    "@types/react":          "^18.3.3",
+    "@types/react-dom":      "^18.3.1",
+    "@vitejs/plugin-react":  "^4.3.1",
+    "terser":                "^5.31.0",
+    "typescript":            "^5.2.2",
+    "vite":                  "^5.4.2"
   }
 }
