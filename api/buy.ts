@@ -1,4 +1,5 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export const config = { runtime: 'nodejs18.x' };
+
 import { Redis } from '@upstash/redis';
 
 const redis = new Redis({
@@ -6,27 +7,26 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 });
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { userId, listingId } = req.body;
-  if (!userId || !listingId) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
+  const { userId, listingId } = req.body || {};
+  if (!userId || !listingId) return res.status(400).json({ error: 'Missing fields' });
 
   const listing = await redis.hgetall(`jule:listing:${listingId}`) as any;
   if (!listing) return res.status(404).json({ error: 'Listing not found' });
 
-  // 残高確認
   const balKey  = `jule:balance:${userId}`;
   const balance = parseFloat((await redis.get(balKey) as string) || '500');
 
-  if (balance < listing.price) {
+  if (balance < Number(listing.price)) {
     return res.status(400).json({ error: 'Insufficient balance' });
   }
 
-  // 取引実行
-  await redis.set(balKey, balance - listing.price);
+  await redis.set(balKey, balance - Number(listing.price));
   await redis.lpush(`jule:user:${userId}:seeds`, listing.seedId);
   await redis.lrem('jule:market:listings', 0, listingId);
   await redis.del(`jule:listing:${listingId}`);
@@ -34,6 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({
     success: true,
     seed:    listing.seed,
-    balance: balance - listing.price,
+    balance: balance - Number(listing.price),
   });
 }
