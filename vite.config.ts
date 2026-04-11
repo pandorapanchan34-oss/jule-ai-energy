@@ -1,18 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  // root設定を削除（プロジェクトルートのindex.htmlを使用）
+  root: 'demo', // ビルドの起点はdemoフォルダ
   plugins: [react()],
   base: '/jule-ai-energy/',
   build: {
-    // プロジェクトルートのdistに出力
-    outDir: 'dist',
+    outDir: '../dist',
     emptyOutDir: true,
     minify: 'terser',
     rollupOptions: {
-      input: 'index.html'
+      // demo/index.html を起点にする
+      input: 'index.html' 
     }
   }
 })
