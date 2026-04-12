@@ -1,4 +1,4 @@
-# Jule: Tokenizing the Value of Though
+# Jule: Tokenizing the Value of Thought
 
 *An Information-Economic Layer for AI Energy Efficiency*
 
