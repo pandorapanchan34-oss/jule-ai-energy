@@ -9,41 +9,30 @@
 // ─────────────────────────────────────────────
 
 // ── Core Engine ──────────────────────────────
-export { TheShredder } from './core/the-shredder.js';
-export {
-  calculateJule,
-  calculateNet,
-  canAfford
-} from './core/jule-calculator.js';
-export {
-  updateReputation,
-  createNewAsset,
-  applyJuleChange
-} from './core/reputation.js';
+export { TheShredder }                        from './core/the-shredder.js';
+export { calculateJule, calculateNet, canAfford } from './core/jule-calculator.js';
+export { updateReputation, createNewAsset, applyJuleChange } from './core/reputation.js';
 
-// ── Fingerprint System (6-axis) ─────────────
-export { calculateSigma } from './fingerprint/sigma.js';
-export {
-  calculatePhi,
-  exclusionMultiplier,
-  hashContent
-} from './fingerprint/phi.js';
-export {
-  calculateDeltaHPrime,
-  calculateEnergySaved,
-  exceedsThreshold
-} from './fingerprint/delta-h-prime.js';
+// ── Fingerprint System（各軸の正典）──────────
+export { calculateSigma }                         from './fingerprint/sigma.js';
+export { calculatePhi, exclusionMultiplier, hashContent } from './fingerprint/phi.js';
+export { calculateDeltaHPrime, calculateEnergySaved, exceedsThreshold } from './fingerprint/delta-h-prime.js';
 
-// ── Energy Layer ────────────────────────────
+// ── Fingerprint6（統合・ジャンル・減衰）────────
+// ※ calculatePhi / calculateSigma は上記正典からexport済みのため重複させない
+export { buildFingerprint6, detectGenre, applyDecay } from './fingerprint/fingerprint6.js';
+export type { JuleFingerprint6 }                      from './fingerprint/fingerprint6.js';
+
+// ── Energy Layer ──────────────────────────────
 export { EnergyMeter } from './energy/meter.js';
 
-// ── Security Layer (Aspidos Adapter) ───────
+// ── Security Layer (Aspidos Adapter) ──────────
 export { MockAspidosAIAdapter } from './adapters/aspidos-ai.js';
 
-// ── Market Layer (Truth Economy) ───────────
+// ── Market Layer (Truth Economy) ──────────────
 export { JuleMarket } from './market/JuleMarket.js';
 
-// ── Types (Unified Export) ─────────────────
+// ── Types (Unified Export) ─────────────────────
 export type {
   // Core
   JuleAuditFingerprint,
@@ -53,24 +42,12 @@ export type {
   JuleAsset,
   JuleConstants,
   IAspidosAIAdapter,
-
   // Market
   juleSeed,
   Listing,
   SeedState,
   HydrateResult,
-
-  // Fingerprint System
+  // Fingerprint
   GenreRepetitionMap,
   JuleGenre,
 } from './types/index.js';
-
-export { 
-  buildFingerprint6,
-  calculatePhi,
-  calculateSigma,
-  detectGenre,
-  calculateDeltaHPrime,
-  applyDecay,
-} from './fingerprint/fingerprint6.js';
-export type { JuleFingerprint6 } from './fingerprint/fingerprint6.js';
