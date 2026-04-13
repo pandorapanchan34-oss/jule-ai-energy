@@ -368,8 +368,6 @@ export default function JuleDemo() {
       </div>
       <div style={{textAlign:"center",marginTop:10,fontSize:8,color:"#1e2d40",letterSpacing:"0.2em"}}>JULE-AI-ENERGY · PANDORA THEORY FRAGMENT · MIT</div>
     </div>
-  );
-</div>
-  </ErrorBoundary>
+    </ErrorBoundary>
   );
 }
