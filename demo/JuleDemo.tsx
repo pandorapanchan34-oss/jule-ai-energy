@@ -7,6 +7,11 @@ const C = {
 };
 
 const STORAGE_KEY = "jule_ranking_v2";
+const getUserId = () => {
+  let id = localStorage.getItem("jule_user_id");
+  if (!id) { id = "U-" + Math.random().toString(36).slice(2,10).toUpperCase(); localStorage.setItem("jule_user_id", id); }
+  return id;
+};
 const saveScore = (entry) => {
   const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   data.push(entry); data.sort((a,b)=>b.net-a.net);
