@@ -107,14 +107,18 @@ export default function JuleDemo() {
   };
 
   useEffect(()=>{
-    setRanking(getRanking());
-    const p = new URLSearchParams(window.location.search);
-    const seedParam = p.get("seed");
-    if (seedParam) {
-      const s = decode(seedParam);
-      if (s) { setMySeeds(prev=>[...prev,s]); addSeedLog("SEED IMPORTED from URL",C.accent); }
-    }
-  },[]);
+  setRanking(getRanking());
+  const p = new URLSearchParams(window.location.search);
+  const seedParam = p.get("seed");
+  if (seedParam) {
+    const s = decode(seedParam);
+    if (s) { setMySeeds(prev=>[...prev,s]); addSeedLog("SEED IMPORTED from URL",C.accent); }
+  }
+  // 市場一覧を取得
+  fetch("/api/market").then(r=>r.json()).then(d=>{
+    if (d.listings) setMarket(d.listings);
+  }).catch(()=>{});
+},[]);
 
   const jaccard = (a,b) => {
     const A=new Set(a.split(" ")),B=new Set(b.split(" "));
