@@ -219,8 +219,10 @@ export default function JuleDemo() {
   };
 
   const hydrateSeed = (seed) => {
-    addSeedLog(`HYDRATE → ${seed.id} | ゆらぎ: ${seed.entropy_pool.slice(0,20)}...`,C.purple);
-  };
+  const pool = seed.entropy_pool ?? seed.entropyPool ?? "N/A";
+  const preview = typeof pool === "string" ? pool.slice(0, 20) : "N/A";
+  addSeedLog(`HYDRATE → ${seed.id} | ゆらぎ: ${preview}...`, C.purple);
+};
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"'Courier New',monospace",padding:"16px",backgroundImage:"radial-gradient(ellipse at 20% 20%,#0a1628 0%,transparent 60%)"}}>
