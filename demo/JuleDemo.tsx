@@ -113,6 +113,49 @@ const Gauge = ({ label, value, max = 1, color = C.accent }: any) => {
   );
 };
 
+const getAdvice = (label: string, diff: number) => {
+  if (diff > 0.2)  return `${label}が過大評価。もっと厳しく見るべき`;
+  if (diff < -0.2) return `${label}が過小評価。もっと自信を持て`;
+  return `${label}は適正レンジ`;
+};
+
+const DiffBar = ({ label, expected, actual }: any) => {
+  const diff = actual - expected;
+  const abs  = Math.abs(diff);
+  const color = abs > 0.2 ? C.red : abs > 0.05 ? C.gold : C.green;
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 10, color: C.muted }}>{label}</span>
+        <span style={{ fontSize: 10, color }}>Δ {diff > 0 ? "+" : ""}{diff.toFixed(2)}</span>
+      </div>
+      <div style={{ height: 4, background: "#1a2030", borderRadius: 2 }}>
+        <div style={{
+          width: `${Math.min(100, actual * 100)}%`, height: "100%",
+          background: color, transition: "0.4s",
+        }} />
+      </div>
+      <div style={{ fontSize: 9, color: C.muted }}>
+        予測:{expected.toFixed(2)} / 実測:{actual.toFixed(2)}
+      </div>
+    </div>
+  );
+};
+
+const DiffInsight = ({ diffs }: any) => (
+  <div style={{
+    marginTop: 10, padding: 10, background: "#060b10",
+    border: `1px solid ${C.border}`, borderRadius: 6,
+  }}>
+    <div style={{ fontSize: 10, color: C.accent, marginBottom: 6 }}>Δ INSIGHT</div>
+    {diffs.map((d: any, i: number) => (
+      <div key={i} style={{ fontSize: 10, color: C.muted }}>
+        • {getAdvice(d.label, d.diff)}
+      </div>
+    ))}
+  </div>
+);
+
 const TermLog = ({ lines }: { lines: any[] }) => {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -169,6 +212,7 @@ export default function JuleDemo() {
   // ✅ マーケットのロード状態を管理（真っ白防止）
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError]     = useState<string | null>(null);
+  const [insight, setInsight]             = useState<any>(null);
 
   const addLog = (text: string, color = C.green) => {
     const time = new Date().toTimeString().slice(0, 8);
@@ -269,6 +313,7 @@ export default function JuleDemo() {
     setHistory(h => [...h.slice(-9), contentHash]);
     saveScore({ text: text.slice(0, 40), net });
     setRanking(getRanking());
+    setInsight(null); // 新しい結果のたびにΔ解説をリセット
     setPulse(true); setTimeout(() => setPulse(false), 600);
   };
 
@@ -427,6 +472,7 @@ export default function JuleDemo() {
                 border: `1px solid ${result.status === "ISSUED" ? "#00f5ff44" : "#ef444444"}`,
                 borderRadius: 8, padding: 14,
               }}>
+                {/* ヘッダー */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div style={{ fontSize: 14, fontWeight: 900, color: result.status === "ISSUED" ? C.accent : C.red }}>
                     {result.status === "ISSUED" ? "✓ ISSUED" : "✗ BURN"}
@@ -439,15 +485,19 @@ export default function JuleDemo() {
                     }}>{result.genre}</span>
                   )}
                 </div>
+
+                {/* 差分バー */}
                 {result.fp && (
                   <>
-                    <Gauge label="V score"    value={result.fp.v}           max={100} color={C.accent} />
-                    <Gauge label="ΔH' final"  value={result.fp.deltaHPrime} max={1}   color={C.green} />
-                    <Gauge label="Σ"          value={result.fp.sigma}       max={1}   color={C.purple} />
-                    <Gauge label="Φ"          value={result.fp.phi}         max={1}   color="#60a5fa" />
-                    <Gauge label="k"          value={result.fp.k}           max={1}   color={C.gold} />
+                    <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.12em", marginBottom: 8 }}>RESULT ANALYSIS</div>
+                    <DiffBar label="V (硬)"      expected={v / 100}         actual={result.fp.v / 100} />
+                    <DiffBar label="Useful (純)" expected={usefulRatio}     actual={result.fp.deltaHPrime} />
+                    <DiffBar label="R (徳)"      expected={reputation}      actual={result.fp.k} />
+                    <DiffBar label="Rep× (旬)"   expected={repetition / 10} actual={result.fp.phi} />
                   </>
                 )}
+
+                {/* スコア */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 10 }}>
                   <div style={{ background: "#060b10", borderRadius: 6, padding: "8px 10px", border: `1px solid ${C.border}`, textAlign: "center" }}>
                     <div style={{ fontSize: 9, color: C.muted, marginBottom: 2 }}>JULE</div>
@@ -460,6 +510,29 @@ export default function JuleDemo() {
                     </div>
                   </div>
                 </div>
+
+                {/* Δ 解説ボタン */}
+                <button
+                  onClick={() => {
+                    if (!result.fp) return;
+                    setInsight([
+                      { label: "V",      diff: result.fp.v / 100      - v / 100 },
+                      { label: "Useful", diff: result.fp.deltaHPrime  - usefulRatio },
+                      { label: "R",      diff: result.fp.k            - reputation },
+                      { label: "Rep×",   diff: result.fp.phi          - repetition / 10 },
+                    ]);
+                  }}
+                  style={{
+                    marginTop: 10, width: "100%", padding: 8,
+                    background: "#001820", border: `1px solid ${C.accent}`,
+                    color: C.accent, fontSize: 10, cursor: "pointer",
+                    fontFamily: "monospace", borderRadius: 4, letterSpacing: "0.1em",
+                  }}
+                >Δ 解説</button>
+
+                {insight && <DiffInsight diffs={insight} />}
+
+                {/* MINT ボタン */}
                 {result.status === "ISSUED" && (
                   <button onClick={mintSeed} style={{
                     marginTop: 10, width: "100%", padding: "8px",
@@ -514,55 +587,46 @@ export default function JuleDemo() {
               </div>
 
               {/* MARKET */}
-<div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
-  <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 8 }}>MARKET</div>
+              <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 8 }}>MARKET</div>
 
-  {marketLoading && <div style={{ color: C.muted, textAlign: "center", padding: "40px 0" }}>読み込み中...</div>}
-
-  {!marketLoading && marketError && (
-    <div style={{ color: C.red, textAlign: "center", padding: "30px 0" }}>
-      ⚠ {marketError}
-    </div>
-  )}
-
-  {!marketLoading && !marketError && market.length === 0 && (
-    <div style={{ color: C.muted, textAlign: "center", padding: "40px 0" }}>現在出品はありません</div>
-  )}
-
-  {!marketLoading && market.map((l, index) => {
-    const seed = l?.seed;
-    if (!l || !seed || !seed.id) {
-      return (
-        <div key={`invalid-${index}`} style={{ color: "#ff6b6b", padding: 12, background: "#1a0a0a", borderRadius: 6, marginBottom: 8 }}>
-          ⚠ Invalid listing data
-        </div>
-      );
-    }
-
-    return (
-      <div key={l.id || `listing-${index}`} style={{ border: `1px solid ${C.accent}44`, borderRadius: 6, padding: 10, marginBottom: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-          <span style={{ color: C.accent, fontSize: 11, fontWeight: 700 }}>{seed.id}</span>
-          <span style={{ color: C.gold, fontSize: 13, fontWeight: 900 }}>{l.price || 0} JULE</span>
-        </div>
-        <div style={{ fontSize: 9, color: C.muted, marginBottom: 8 }}>
-          {seed.genre || "OTHER"} | 品質: {Number(seed.qualityScore ?? 0).toFixed(1)}
-        </div>
-        <button 
-          onClick={() => buy(l)} 
-          style={{
-            width: "100%", padding: "6px", fontSize: 10,
-            background: "#001820", border: `1px solid ${C.accent}`,
-            borderRadius: 4, color: C.accent, cursor: "pointer",
-            fontFamily: "monospace", fontWeight: 700,
-          }}
-        >
-          BUY ({l.price || 0} JULE)
-        </button>
-      </div>
-    );
-  })}
-</div>
+                {/* ✅ ローディング・エラー・空の3状態を明示 */}
+                {marketLoading && (
+                  <div style={{ color: C.muted, fontSize: 11, textAlign: "center", padding: "20px 0" }}>
+                    読み込み中...
+                  </div>
+                )}
+                {!marketLoading && marketError && (
+                  <div style={{ color: C.red, fontSize: 10, textAlign: "center", padding: "20px 0" }}>
+                    ⚠ {marketError}<br />
+                    <span style={{ color: C.muted }}>APIに接続できませんでした</span>
+                  </div>
+                )}
+                {!marketLoading && !marketError && market.length === 0 && (
+                  <div style={{ color: C.muted, fontSize: 11, textAlign: "center", padding: "20px 0" }}>出品なし</div>
+                )}
+                {!marketLoading && market.map(l => {
+                  // ✅ seed が undefined でもクラッシュしない
+                  if (!l || !l.seed) return null;
+                  return (
+                    <div key={l.id} style={{ border: `1px solid ${C.accent}44`, borderRadius: 6, padding: 10, marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ color: C.accent, fontSize: 11, fontWeight: 700 }}>{l.seed.id}</span>
+                        <span style={{ color: C.gold, fontSize: 13, fontWeight: 900 }}>{l.price} JULE</span>
+                      </div>
+                      <div style={{ fontSize: 9, color: C.muted, marginBottom: 8 }}>
+                        {l.seed.genre || l.seed.metadata?.topic || "OTHER"} | 品質: {(l.seed.qualityScore ?? 0).toFixed(1)}
+                      </div>
+                      <button onClick={() => buy(l)} style={{
+                        width: "100%", padding: "6px", fontSize: 10,
+                        background: "#001820", border: `1px solid ${C.accent}`,
+                        borderRadius: 4, color: C.accent, cursor: "pointer",
+                        fontFamily: "monospace", fontWeight: 700,
+                      }}>BUY ({l.price} JULE)</button>
+                    </div>
+                  );
+                })}
+              </div>
 
               <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 4 }}>LOG</div>
               <TermLog lines={seedLog} />
