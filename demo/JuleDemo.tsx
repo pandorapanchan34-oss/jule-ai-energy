@@ -1,3 +1,17 @@
+import React from "react";
+
+class ErrorBoundary extends React.Component<{children:any},{error:any}> {
+  state = { error: null };
+  static getDerivedStateFromError(e: any) { return { error: e }; }
+  render() {
+    if (this.state.error) return (
+      <div style={{color:"red",padding:20,fontFamily:"monospace",whiteSpace:"pre-wrap"}}>
+        ERROR: {String(this.state.error)}
+      </div>
+    );
+    return this.props.children;
+  }
+}
 import { useState, useEffect, useRef } from "react";
 
 const C = {
