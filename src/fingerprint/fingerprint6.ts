@@ -1,121 +1,108 @@
 // ─────────────────────────────────────────────
-// Jule Type Definitions
-// This is a fragment of Pandora Theory.
+// src/fingerprint/fingerprint6.ts
+// 6軸フィンガープリント統合生成
+// ※ 各軸の計算は専用ファイルに委譲（唯一の真実）
 // ─────────────────────────────────────────────
 
+import { calculatePhi, exclusionMultiplier } from './phi.js';
+import { calculateSigma }                    from './sigma.js';
+import { calculateDeltaHPrime }              from './delta-h-prime.js';
+import type { JuleAuditFingerprint, L2Evaluation } from '../types/index.js';
 
-// ── Genre Axis (6th axis) ─────────────────────
-export type JuleGenre =
-  | 'PHYSICS'       // 物理・宇宙論
-  | 'MATH'          // 数学・証明
-  | 'AI_SAFETY'     // AI安全・倫理
-  | 'ECONOMICS'     // 経済・トークン設計
-  | 'CONSCIOUSNESS' // 意識・哲学
-  | 'ENGINEERING'   // 実装・コード
-  | 'CROSS'         // ジャンル横断（ボーナス）
-  | 'OTHER';        // 未分類
+export type JuleFingerprint6 = {
+  v_score:            number;  // ① 知性強度
+  sigma_singularity:  number;  // ② 構造収束度
+  phi_inertia:        number;  // ③ 重複慣性
+  delta_h_prime:      number;  // ④ 情報進化量（減衰前）
+  gamma_genre:        string;  // ⑤ 文脈ジャンル
+  delta_h_effective:  number;  // ⑥ 実効ΔH（減衰・genreBonus後）
+  repetition_count:   number;  // 補助
+};
 
-// Genre repetition tracking
-export interface GenreRepetitionMap {
-  [userId: string]: {
-    [genre: string]: {
-      [fingerprintBucket: string]: number;
-    };
+// ── ジャンル検出（fingerprint6のみで使用）────
+const GENRE_MAP: Record<string, string[]> = {
+  PHYSICS:       ["quantum", "spacetime", "entropy", "gravity"],
+  MATH:          ["proof", "theorem", "equation"],
+  AI_SAFETY:     ["alignment", "audit", "hallucination", "shredder"],
+  ECONOMICS:     ["market", "token", "incentive"],
+  CONSCIOUSNESS: ["qualia", "awareness", "mind"],
+  ENGINEERING:   ["code", "api", "system", "architecture"],
+};
+
+export function detectGenre(text: string): string {
+  const lower = text.toLowerCase();
+  const hits = Object.entries(GENRE_MAP)
+    .map(([k, v]) => [k, v.filter(w => lower.includes(w)).length] as [string, number])
+    .filter(([, count]) => count > 0);
+
+  if (hits.length === 0) return "OTHER";
+  if (hits.length >= 3)  return "CROSS";
+  return hits.sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// ── 減衰・genreBonus適用 ─────────────────────
+export function applyDecay(
+  deltaHPrime: number,
+  repetition:  number,
+  genre:       string
+): { delta_h_effective: number; repetition_count: number } {
+  const decay      = Math.pow(0.5, repetition);
+  const genreBonus = genre === "CROSS" ? 1.2 : 1.0;
+  return {
+    delta_h_effective: deltaHPrime * decay * genreBonus,
+    repetition_count:  repetition,
   };
 }
 
-// Repetition decay result
-export interface DecayResult {
-  repetition_count: number;
-  decay_factor:     number;  // (1/2)^count
-  delta_h_effective: number; // ΔH' × decay_factor
-  is_echo_chamber:  boolean; // count >= 11
-}
+// ── 6軸統合生成 ──────────────────────────────
+export function buildFingerprint6({
+  text,
+  v,
+  usefulRatio,
+  k,
+  historyFingerprints,  // JuleAuditFingerprint[] に変更
+  repetition,
+}: {
+  text:                string;
+  v:                   number;
+  usefulRatio:         number;
+  k:                   number;
+  historyFingerprints: JuleAuditFingerprint[];  // 正典のphi.tsに合わせる
+  repetition:          number;
+}): JuleFingerprint6 {
 
-// ── 6-Axis Information Fingerprint ───────────
-export interface JuleAuditFingerprint {
-  v_score:           number;    // 論理硬度         (0-100)
-  delta_h_prime:     number;    // エネルギー拡張新規性 (0-1)
-  k_reality:         number;    // 接地力           (0-1)
-  sigma_singularity: number;    // 認知的特異性      (0-1)
-  phi_inertia:       number;    // 位相慣性          (0-1)
-  gamma_genre:       JuleGenre; // ジャンル軸 ★NEW (6th axis)
-  delta_h_effective: number;    // 減衰後ΔH' (decay applied)
-  repetition_count:  number;    // 同ジャンル×指紋の連投回数
-}
+  // Φ: phi.tsの正典関数を使用
+  const contentHash = text.trim().split(/\s+/).slice(0, 5).join("_");
+  const phi = calculatePhi(contentHash, historyFingerprints);
 
-// ── L2 Evaluation from AI engines ────────────
-export interface L2Evaluation {
-  ai_id:       string;       // "claude" | "chatgpt" | "gemini" | "grok"
-  v_score:     number;       // 0-100
-  delta_h_raw: number;       // 0-1
-  burn_reason: string | null;
-  reason:      string;
-  token_count: number;       // total tokens generated
-  useful_ratio: number;      // useful_tokens / total_tokens (0-1)
-}
+  // Σ: sigma.tsの正典関数を使用（L2Evaluationを1件として構築）
+  const evalEntry: L2Evaluation = {
+    ai_id:        'demo',
+    v_score:      v,
+    delta_h_raw:  (v / 100) * usefulRatio,
+    burn_reason:  null,
+    reason:       'user input',
+    token_count:  text.trim().split(/\s+/).length,
+    useful_ratio: usefulRatio,
+  };
+  const sigma = calculateSigma([evalEntry]);
 
-// ── Audit Result ──────────────────────────────
-export type AuditStatus = "ISSUED" | "BURN" | "THRESHOLD_BURN";
+  // ΔH': delta-h-prime.tsの正典関数を使用
+  const deltaHPrime = calculateDeltaHPrime([evalEntry], sigma);
 
-export interface AuditResult {
-  transmission_id: string;
-  status:          AuditStatus;
-  jule:            number;
-  net:             number;            // jule - POSTING_COST
-  fingerprint:     JuleAuditFingerprint;
-  burn_reason:     string | null;
-  energy_saved:    number;            // normalized units (→ kWh in Phase 3)
-  timestamp:       number;
-}
+  // γ: ジャンル検出（fingerprint6固有）
+  const genre = detectGenre(text);
 
-// ── Audit Log Entry (for persistence) ────────
-export interface AuditLogEntry {
-  transmission_id:  string;
-  raw_content_hash: string;           // SHA-256 of content
-  fingerprint:      JuleAuditFingerprint;
-  jule_issued:      number;
-  burn_reason:      string | null;
-  energy_saved:     number;
-  R?:               number;           // reduction rate ΔT/T_baseline
-  T_actual?:        number;           // actual token count
-  T_baseline?:      number;           // effective baseline used
-  timestamp:        number;
-  hmac_signature?:  string;           // set by PandoraTruthGate adapter
-}
+  // 減衰・genreBonus適用
+  const decay = applyDecay(deltaHPrime, repetition, genre);
 
-// ── User Asset ────────────────────────────────
-export interface JuleAsset {
-  user_id:                 string;
-  total_jule:              number;
-  reputation_score:        number;    // R (0-1)
-  entropy_reduction_total: number;    // cumulative ΔH'
-  energy_saved_total:      number;    // cumulative energy_saved
-  last_updated:            number;
-}
-
-// ── Jule Constants (abstracted) ───────────────
-// Specific values are derived from Pandora Theory.
-// They are injected via environment variables in production.
-export interface JuleConstants {
-  POSTING_COST:    number;   // default: 10
-  J_MAX:           number;   // default: 100
-  THRESHOLD_G:     number;   // θ_sat — from Pandora Theory (undisclosed)
-  PHI_BURN_LIMIT:  number;   // default: 0.95
-  PHI_WARN_LIMIT:  number;   // default: 0.70
-  LAMBDA_INERTIA:  number;   // default: 3.0
-  REPUTATION_ALPHA:number;   // EMA smoothing, default: 0.1
-}
-
-// ── AspidosAI Adapter Interface ───────────────
-// Implemented by aspidos-ai (separate project)
-export interface IAspidosAIAdapter {
-  evaluateCategory(content: string): Promise<{
-    category: string;
-    k:        number;
-    reason:   string | null;
-  }>;
-  signEntry(entry: AuditLogEntry): AuditLogEntry;
-  verifyEntry(entry: AuditLogEntry): boolean;
-  pushTelemetry(entry: AuditLogEntry): void;
+  return {
+    v_score:           v,
+    sigma_singularity: sigma,
+    phi_inertia:       phi,
+    delta_h_prime:     deltaHPrime,
+    gamma_genre:       genre,
+    delta_h_effective: decay.delta_h_effective,
+    repetition_count:  repetition,
+  };
 }
