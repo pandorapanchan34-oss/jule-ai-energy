@@ -299,9 +299,10 @@ export default function JuleDemo() {
           v_score:           normalizedFp.v,
           sigma_singularity: normalizedFp.sigma,
           phi_inertia:       normalizedFp.phi,
-          delta_h_prime:     normalizedFp.deltaHPrime,
-          gamma_genre:       normalizedFp.genre,
-          delta_h_effective: normalizedFp.deltaHPrime,
+          delta_h_prime:     normalizedFp.deltaHPrime ?? 0,
+          k_reality:         normalizedFp.k ?? 1.0,
+          gamma_genre:       normalizedFp.genre ?? "OTHER",
+          delta_h_effective: normalizedFp.deltaHPrime ?? 0,
           repetition_count:  repetition,
         };
         setHistory(h => [...h.slice(-9), historyEntry]);
