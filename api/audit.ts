@@ -4,9 +4,9 @@
 // ─────────────────────────────────────────────
 export const config = { runtime: 'nodejs' };
 
-import { buildFingerprint6 }           from '../src/fingerprint/fingerprint6';
-import { calculateJule, calculateNet } from '../src/core/jule-calculator';
-import type { JuleAuditFingerprint }   from '../src/types/index';
+import { buildFingerprint6 }           from '../src/fingerprint/fingerprint6.js';
+import { calculateJule, calculateNet } from '../src/core/jule-calculator.js';
+import type { JuleAuditFingerprint }   from '../src/types/index.js';
 
 const POSTING_COST = 10;
 
@@ -33,7 +33,7 @@ export default async function handler(req: any, res: any) {
     reputation          = 0.5,
     category            = 'SAFE',
     repetition          = 0,
-    historyFingerprints = [],   // JuleAuditFingerprint[] をフロントから受け取る
+    historyFingerprints = [],
   } = req.body || {};
 
   // ── バリデーション ───────────────────────────
