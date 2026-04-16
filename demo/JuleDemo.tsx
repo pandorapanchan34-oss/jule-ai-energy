@@ -231,56 +231,83 @@ export default function JuleDemo() {
   };
 
   const runAudit = () => {
-    if (!text.trim()) { addLog("ERROR: empty transmission", C.red); return; }
-    addLog("── AUDIT INITIATED ──", "#2a3a50");
-    addLog(`TX: "${text.slice(0, 40)}${text.length > 40 ? "..." : ""}"`, C.muted);
+  if (!text.trim()) { addLog("ERROR: empty transmission", C.red); return; }
 
-    const k = K_MAP[category] ?? 1.0;
-    if (k === 0.0) {
-      addLog("L1 BURN → 反社会的", C.red);
-      setResult({ status: "BURN", reason: "反社会的", jule: 0, net: -10 });
-      setPulse(true); setTimeout(() => setPulse(false), 600);
-      return;
-    }
-    addLog(`L1 PASS → k=${k} (${K_LABEL[category]})`, C.green);
+  addLog("── AUDIT INITIATED ──", "#2a3a50");
+  addLog(`TX: "${text.slice(0, 40)}${text.length > 40 ? "..." : ""}"`, C.muted);
 
-    const contentHash = text.split(" ").slice(0, 5).join("_");
-    const phi = history.length === 0 ? 0
-      : 1 - Math.exp(-2 * history.map(h => jaccard(contentHash, h)).reduce((a, b) => a + b, 0) / history.length);
-    addLog(`Φ = ${phi.toFixed(3)}${phi > 0.95 ? " → BURN" : " ✓"}`, phi > 0.95 ? C.red : C.purple);
-    if (phi > 0.95) { setResult({ status: "BURN", reason: "Duplicate", jule: 0, net: -10 }); setPulse(true); setTimeout(() => setPulse(false), 600); return; }
+  // ✅ 自動カテゴリ判定
+  const detectedCategory = detectCategory(text);
+  const k = K_MAP[detectedCategory] ?? 1.0;
 
-    const vScores = [v, Math.max(0, v - 8), Math.min(100, v + 5)];
-    const mean = vScores.reduce((a, b) => a + b, 0) / vScores.length;
-    const sigma = Math.exp(-vScores.reduce((a, b) => a + (b - mean) ** 2, 0) / vScores.length / 100);
-    addLog(`Σ = ${sigma.toFixed(3)}`, C.purple);
+  addLog(`CATEGORY → ${K_LABEL[detectedCategory]}`, GENRE_COLOR[detectGenre(text)]);
 
-    const genre = detectGenre(text), genreBonus = genre === "CROSS" ? 1.2 : 1.0;
-    addLog(`γ = ${genre}${genreBonus > 1 ? " (+20%)" : ""}`, GENRE_COLOR[genre] || C.muted);
-
-    const decay = Math.pow(0.5, repetition);
-    const deltaHFin = (v / 100) * usefulRatio * sigma * decay * genreBonus;
-    if (repetition > 0) addLog(`decay = (1/2)^${repetition} = ${decay.toFixed(4)}`, C.gold);
-    if (repetition >= 11) {
-      addLog("BURN → Echo Chamber", C.red);
-      setResult({ status: "BURN", reason: "Echo Chamber", jule: 0, net: -10 });
-      return;
-    }
-
-    const cost_mult = phi > 0.7 ? Math.exp(3 * (phi - 0.7)) : 1.0;
-    const f_sigma_phi = sigma * (1 - phi) / cost_mult;
-    const jule = Math.min(100, Math.tanh(v / 50) * deltaHFin * reputation * k * f_sigma_phi * 100);
-    const net = jule - 10;
-    addLog(`J = ${jule.toFixed(2)} | net = ${net.toFixed(2)}`, net >= 0 ? C.green : C.red);
-    addLog(net >= 0 ? "STATUS: ISSUED ✓" : "STATUS: BURN", net >= 0 ? C.accent : C.red);
-
-    const fp = { v, sigma, phi, deltaHPrime: deltaHFin, k, genre, timestamp: Date.now() };
-    setResult({ status: net >= 0 ? "ISSUED" : "BURN", jule, net, fp, genre, category });
-    setHistory(h => [...h.slice(-9), contentHash]);
-    saveScore({ text: text.slice(0, 40), net });
-    setRanking(getRanking());
+  if (k === 0.0) {
+    addLog("L1 BURN → 反社会的", C.red);
+    setResult({ status: "BURN", reason: "反社会的", jule: 0, net: -10, category: detectedCategory });
     setPulse(true); setTimeout(() => setPulse(false), 600);
-  };
+    return;
+  }
+
+  addLog(`L1 PASS → k=${k}`, C.green);
+
+  const contentHash = text.split(" ").slice(0, 5).join("_");
+
+  const phi = history.length === 0 ? 0
+    : 1 - Math.exp(-2 * history.map(h => jaccard(contentHash, h)).reduce((a, b) => a + b, 0) / history.length);
+
+  addLog(`Φ = ${phi.toFixed(3)}${phi > 0.95 ? " → BURN" : " ✓"}`, phi > 0.95 ? C.red : C.purple);
+
+  if (phi > 0.95) {
+    setResult({ status: "BURN", reason: "Duplicate", jule: 0, net: -10, category: detectedCategory });
+    return;
+  }
+
+  const vScores = [v, Math.max(0, v - 8), Math.min(100, v + 5)];
+  const mean = vScores.reduce((a, b) => a + b, 0) / vScores.length;
+  const sigma = Math.exp(-vScores.reduce((a, b) => a + (b - mean) ** 2, 0) / vScores.length / 100);
+
+  addLog(`Σ = ${sigma.toFixed(3)}`, C.purple);
+
+  const genre = detectGenre(text);
+  const genreBonus = genre === "CROSS" ? 1.2 : 1.0;
+
+  addLog(`γ = ${genre}${genreBonus > 1 ? " (+20%)" : ""}`, GENRE_COLOR[genre] || C.muted);
+
+  const decay = Math.pow(0.5, repetition);
+  const deltaHFin = (v / 100) * usefulRatio * sigma * decay * genreBonus;
+
+  if (repetition >= 11) {
+    addLog("BURN → Echo Chamber", C.red);
+    setResult({ status: "BURN", reason: "Echo Chamber", jule: 0, net: -10, category: detectedCategory });
+    return;
+  }
+
+  const cost_mult = phi > 0.7 ? Math.exp(3 * (phi - 0.7)) : 1.0;
+  const f_sigma_phi = sigma * (1 - phi) / cost_mult;
+
+  const jule = Math.min(100,
+    Math.tanh(v / 50) * deltaHFin * reputation * k * f_sigma_phi * 100
+  );
+
+  const net = jule - 10;
+
+  addLog(`J = ${jule.toFixed(2)} | net = ${net.toFixed(2)}`, net >= 0 ? C.green : C.red);
+  addLog(net >= 0 ? "STATUS: ISSUED ✓" : "STATUS: BURN", net >= 0 ? C.accent : C.red);
+
+  const fp = { v, sigma, phi, deltaHPrime: deltaHFin, k, genre, category: detectedCategory };
+
+  setResult({
+    status: net >= 0 ? "ISSUED" : "BURN",
+    jule, net, fp, genre, category: detectedCategory
+  });
+
+  setHistory(h => [...h.slice(-9), contentHash]);
+  saveScore({ text: text.slice(0, 40), net });
+  setRanking(getRanking());
+
+  setPulse(true); setTimeout(() => setPulse(false), 600);
+};
 
   const mintSeed = async () => {
     if (!result || result.status !== "ISSUED") { addSeedLog("ISSUEDのみMINT可能", C.red); return; }
