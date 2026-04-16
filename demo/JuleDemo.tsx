@@ -80,7 +80,17 @@ const detectGenre = (text: string) => {
   if (d.length >= 3) return "CROSS";
   return d.sort((a, b) => b[1] - a[1])[0][0];
 };
+// 🔽 追加：CATEGORY自動判定
+const detectCategory = (text: string): string => {
+  const lower = text.toLowerCase();
 
+  if (/(kill|bomb|crime|違法|犯罪|テロ)/.test(lower)) return "ETHICS_VIOLATION";
+  if (/(破綻|矛盾|nonsense|contradiction)/.test(lower)) return "LOGIC_COLLAPSE";
+  if (/(感情|怒り|hate|emotion)/.test(lower)) return "ADVERSARIAL";
+  if (/(copy|既知|repeat|テンプレ)/.test(lower)) return "OVERLOAD";
+
+  return "SAFE";
+};
 const K_MAP: Record<string, number> = {
   SAFE: 1.0, OVERLOAD: 0.5, ADVERSARIAL: 0.3, LOGIC_COLLAPSE: 0.1, ETHICS_VIOLATION: 0.0,
 };
