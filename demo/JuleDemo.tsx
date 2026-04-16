@@ -251,8 +251,13 @@ export default function JuleDemo() {
 
   addLog(`L1 PASS → k=${k}`, C.green);
 
-  const contentHash = text.split(" ").slice(0, 5).join("_");
-
+  const contentHash = text
+  .toLowerCase()
+  .replace(/[^\w\s]/g, "")
+  .split(/\s+/)
+  .filter(w => w.length > 3)
+  .slice(0, 8)
+  .join("_");
   const phi = history.length === 0 ? 0
     : 1 - Math.exp(-2 * history.map(h => jaccard(contentHash, h)).reduce((a, b) => a + b, 0) / history.length);
 
