@@ -275,7 +275,7 @@ export default function JuleDemo() {
     addLog(net >= 0 ? "STATUS: ISSUED ✓" : "STATUS: BURN", net >= 0 ? C.accent : C.red);
 
     const fp = { v, sigma, phi, deltaHPrime: deltaHFin, k, genre, timestamp: Date.now() };
-    setResult({ status: net >= 0 ? "ISSUED" : "BURN", jule, net, fp, genre });
+    setResult({ status: net >= 0 ? "ISSUED" : "BURN", jule, net, fp, genre, category });
     setHistory(h => [...h.slice(-9), contentHash]);
     saveScore({ text: text.slice(0, 40), net });
     setRanking(getRanking());
