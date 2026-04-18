@@ -267,6 +267,9 @@ export default function JuleDemo() {
       if (data.category) setCategory(data.category);
 
       addLog(`L1 → ${data.category ?? "SAFE"} (k=${data.fingerprint?.k ?? 1})`, C.green);
+
+      // ログ表示（APIから返ってきた値で表示）
+      if (fp) {
         addLog(`Σ = ${fp.sigma?.toFixed(3)}`,     C.purple);
         addLog(`Φ = ${fp.phi?.toFixed(3)}${fp.phi > 0.95 ? " → BURN" : " ✓"}`, fp.phi > 0.95 ? C.red : C.purple);
         addLog(`γ = ${fp.genre ?? "N/A"}`,         GENRE_COLOR[fp.genre] || C.muted);
