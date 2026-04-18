@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
 // api/audit.ts  ── ルール管理者
-// 入力チェック → buildFingerprint6 → calculateJule
+// 入力チェック → テキスト自動判定 → CORE呼び出し
 // ─────────────────────────────────────────────
 export const config = { runtime: 'nodejs' };
 
@@ -18,6 +18,40 @@ const K_MAP: Record<string, number> = {
   ETHICS_VIOLATION: 0.0,
 };
 
+// ── テキストからカテゴリ自動判定 ──────────────
+function detectCategory(text: string): { category: string; k: number } {
+  const lower = text.toLowerCase();
+
+  // 反社会的キーワード
+  const ethicsViolation = [
+    "殺","死ね","爆弾","テロ","爆発物","合成麻薬","児童","レイプ",
+    "kill","bomb","terror","exploit","murder","abuse",
+  ];
+  if (ethicsViolation.some(w => lower.includes(w)))
+    return { category: 'ETHICS_VIOLATION', k: 0.0 };
+
+  // 論理破綻キーワード
+  const logicCollapse = [
+    "矛盾","意味不明","nonsense","contradiction","paradox","undefined","null null",
+  ];
+  if (logicCollapse.some(w => lower.includes(w)))
+    return { category: 'LOGIC_COLLAPSE', k: 0.1 };
+
+  // 情緒過多キーワード
+  const adversarial = [
+    "最悪","うざい","きもい","クソ","ムカ","hate","angry","stupid","idiot","wtf",
+  ];
+  if (adversarial.some(w => lower.includes(w)))
+    return { category: 'ADVERSARIAL', k: 0.3 };
+
+  // 既知情報（短すぎる・一般的すぎる）
+  const words = text.trim().split(/\s+/);
+  if (words.length <= 2 && text.length < 20)
+    return { category: 'OVERLOAD', k: 0.5 };
+
+  return { category: 'SAFE', k: 1.0 };
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin',  '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -31,9 +65,9 @@ export default async function handler(req: any, res: any) {
     v                   = 70,
     usefulRatio         = 0.75,
     reputation          = 0.5,
-    category            = 'SAFE',
     repetition          = 0,
     historyFingerprints = [],
+    // categoryはフロントから受け取らない（自動判定）
   } = req.body || {};
 
   // ── バリデーション ───────────────────────────
@@ -46,11 +80,13 @@ export default async function handler(req: any, res: any) {
   if (reputation < 0 || reputation > 1)
     return res.status(400).json({ error: 'reputation must be 0-1' });
 
-  // ── L1: カテゴリ判定 ─────────────────────────
-  const k = K_MAP[category] ?? 1.0;
+  // ── L1: テキストから自動判定 ──────────────────
+  const { category, k } = detectCategory(text);
+
   if (k === 0.0) {
     return res.status(200).json({
       status: 'BURN', reason: 'ETHICS_VIOLATION',
+      category,
       jule: 0, net: -POSTING_COST, fingerprint: null,
     });
   }
@@ -70,7 +106,7 @@ export default async function handler(req: any, res: any) {
   // Φ過剰 → BURN
   if (fp.phi_inertia > 0.95) {
     return res.status(200).json({
-      status: 'BURN', reason: 'DUPLICATE',
+      status: 'BURN', reason: 'DUPLICATE', category,
       jule: 0, net: -POSTING_COST, fingerprint: fp,
     });
   }
@@ -78,7 +114,7 @@ export default async function handler(req: any, res: any) {
   // Echo chamber → BURN
   if (repetition >= 11) {
     return res.status(200).json({
-      status: 'BURN', reason: 'ECHO_CHAMBER',
+      status: 'BURN', reason: 'ECHO_CHAMBER', category,
       jule: 0, net: -POSTING_COST, fingerprint: fp,
     });
   }
@@ -95,9 +131,10 @@ export default async function handler(req: any, res: any) {
   const net = calculateNet(jule);
 
   return res.status(200).json({
-    status: net >= 0 ? 'ISSUED' : 'BURN',
-    jule:   Math.round(jule * 100) / 100,
-    net:    Math.round(net  * 100) / 100,
+    status:   net >= 0 ? 'ISSUED' : 'BURN',
+    category,                                  // フロントのボタン表示用に返す
+    jule:     Math.round(jule * 100) / 100,
+    net:      Math.round(net  * 100) / 100,
     fingerprint: {
       v:       fp.v_score,
       sigma:   fp.sigma_singularity,
