@@ -554,6 +554,7 @@ export default function JuleDemo() {
                   );
                 })}
               </div>
+今コレ
 
               <div style={{ fontSize: 9, color: C.muted, letterSpacing: "0.15em", marginBottom: 4 }}>LOG</div>
               <TermLog lines={seedLog} />
